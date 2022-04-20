@@ -1,0 +1,37 @@
+server:
+  port: 8080
+spring:
+  web:
+    resources:
+      add-mappings: false
+  mvc:
+    throw-exception-if-no-com:
+      turkcell:
+        handler-found: true
+  application:
+    name: order-service
+  datasource:
+    url: jdbc:h2:mem:orderDb
+    username: sa
+    password: password
+    driverClassName: org.h2.Driver
+    initialization-mode: always
+  jpa:
+    hibernate:
+      ddl-auto: update
+    generate-ddl: true
+    database-platform: org.hibernate.dialect.H2Dialect
+  h2:
+    console:
+      enabled: true
+    console.path: /h2-console
+    console.settings.trace: false
+
+services:
+  inventory:
+    url: http://localhost:8081
+    lock-item-for-purchase: /v1/lock/purchase/item
+    update-inventory-for-sold-item: /v1/item/sold
+  payment:
+    url: http://localhost:8082
+    check-budget-and-complete-payment: /v1/check/budget/complete/payment
