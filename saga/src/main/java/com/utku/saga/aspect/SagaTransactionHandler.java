@@ -1,5 +1,6 @@
 package com.utku.saga.aspect;
 
+import com.utku.saga.model.RemoteCallRequest;
 import lombok.Data;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.annotation.RequestScope;
@@ -19,5 +20,5 @@ public class SagaTransactionHandler {
     public SagaTransactionHandler(){
         this.transactionHistory = new ArrayList<>();
     }
-    List<String> transactionHistory;
+    List<RemoteCallRequest> transactionHistory;
 }

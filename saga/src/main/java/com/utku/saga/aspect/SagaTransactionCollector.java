@@ -1,5 +1,6 @@
 package com.utku.saga.aspect;
 
+import com.utku.saga.model.RemoteCallRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.After;
@@ -23,17 +24,17 @@ public class SagaTransactionCollector {
     @Autowired
     private SagaTransactionHandler sagaTransactionHandler;
 
-    @Before(value = "@within(Saga) && args(url,..)")
-    public void beforeAdvice(JoinPoint joinPoint, String url) {
+    @Before(value = "@within(Saga) && args(remoteCallRequest,..)")
+    public void beforeAdvice(JoinPoint joinPoint, RemoteCallRequest remoteCallRequest) {
         log.warn("Before method:" + joinPoint.getSignature());
-        log.warn("called remoteUrl " + url);
+        log.warn("called remoteUrl " + remoteCallRequest);
     }
 
-    @After(value = "@within(Saga) && args(url,..)")
-    public void afterAdvice(JoinPoint joinPoint, String url) {
-        sagaTransactionHandler.getTransactionHistory().add(url);
+    @After(value = "@within(Saga) && args(remoteCallRequest,..)")
+    public void afterAdvice(JoinPoint joinPoint, RemoteCallRequest remoteCallRequest) {
+        sagaTransactionHandler.getTransactionHistory().add(remoteCallRequest);
         log.warn("After method:" + joinPoint.getSignature());
-        log.warn("call completed remoteUrl " + url);
+        log.warn("call completed remoteUrl " + remoteCallRequest);
     }
 
 }

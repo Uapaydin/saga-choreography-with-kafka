@@ -3,6 +3,8 @@ package com.utku.saga.service;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.utku.saga.enumaration.AuthorizationType;
+import com.utku.saga.model.RemoteCallPackage;
+import com.utku.saga.model.RemoteCallRequest;
 import com.utku.saga.prop.JwtValidationProperties;
 import lombok.extern.slf4j.Slf4j;
 import net.logstash.logback.encoder.org.apache.commons.lang3.StringUtils;
@@ -65,8 +67,13 @@ public class TokenService implements InitializingBean {
 
     private void generateServiceToken(){
         if(Boolean.TRUE.equals(jwtValidationProperties.getGenerateServiceToken())){
-            serviceJwtToken = remoteCall.callForObject(jwtValidationProperties.getJwksUrl() + "/api/v1/generate/service-token",
-                    HttpMethod.POST, String.class, AuthorizationType.NONE, jwtValidationProperties.getTokenKey());
+            RemoteCallRequest remoteCallRequest = new RemoteCallRequest();
+            RemoteCallPackage processRequest = new RemoteCallPackage();
+            processRequest.setAuthorizationType(AuthorizationType.NONE);
+            processRequest.setHttpMethod(HttpMethod.POST);
+            processRequest.setUrl(jwtValidationProperties.getJwksUrl() + "/api/v1/generate/service-token");
+            remoteCallRequest.setProcessRequest(processRequest);
+            serviceJwtToken = remoteCall.callForObject(remoteCallRequest, String.class);
         }else{
             log.info("Service token generation is disabled");
         }
