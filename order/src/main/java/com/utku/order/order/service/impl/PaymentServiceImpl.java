@@ -35,6 +35,11 @@ public class PaymentServiceImpl implements PaymentService {
         processRequest.setHttpMethod(HttpMethod.POST);
         processRequest.setUrl(serviceProperties.getPayment().getCheckBudgetAndCompletePaymentUrl());
         remoteCallRequest.setProcessRequest(processRequest);
+        RemoteCallPackage compensationRequest = new RemoteCallPackage();
+        compensationRequest.setAuthorizationType(AuthorizationType.NONE);
+        compensationRequest.setHttpMethod(HttpMethod.POST);
+        compensationRequest.setUrl(serviceProperties.getPayment().getCheckBudgetAndCompletePaymentUrl());
+        remoteCallRequest.setProcessRequest(compensationRequest);
         return remoteCall.callForObject(remoteCallRequest,Boolean.class);
     }
 }
