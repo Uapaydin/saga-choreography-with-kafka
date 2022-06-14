@@ -5,7 +5,10 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.utku.saga.enumaration.AuthorizationType;
 import com.utku.saga.model.RemoteCallPackage;
 import com.utku.saga.model.RemoteCallRequest;
+import com.utku.saga.model.RemoteRestCallPackage;
 import com.utku.saga.prop.JwtValidationProperties;
+import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.logstash.logback.encoder.org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;
@@ -16,6 +19,7 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.rmi.Remote;
 import java.util.Base64;
 import java.util.HashMap;
 
@@ -27,11 +31,10 @@ import java.util.HashMap;
 @Order(Integer.MIN_VALUE)
 @Slf4j
 public class TokenService implements InitializingBean {
-    @Autowired
-    RemoteCall remoteCall;
 
     private static TokenService instance;
     private final ObjectMapper objectmapper;
+    private final RemoteCall remoteCall;
 
     @Override
     public void afterPropertiesSet() {
@@ -46,6 +49,7 @@ public class TokenService implements InitializingBean {
     public TokenService(JwtValidationProperties jwtValidationProperties){
         this.jwtValidationProperties = jwtValidationProperties;
         this.objectmapper = new ObjectMapper();
+        this.remoteCall = new RemoteCall();
         objectmapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         objectmapper.enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT);
     }
@@ -68,7 +72,7 @@ public class TokenService implements InitializingBean {
     private void generateServiceToken(){
         if(Boolean.TRUE.equals(jwtValidationProperties.getGenerateServiceToken())){
             RemoteCallRequest remoteCallRequest = new RemoteCallRequest();
-            RemoteCallPackage processRequest = new RemoteCallPackage();
+            RemoteRestCallPackage processRequest = new RemoteRestCallPackage();
             processRequest.setAuthorizationType(AuthorizationType.NONE);
             processRequest.setHttpMethod(HttpMethod.POST);
             processRequest.setUrl(jwtValidationProperties.getJwksUrl() + "/api/v1/generate/service-token");

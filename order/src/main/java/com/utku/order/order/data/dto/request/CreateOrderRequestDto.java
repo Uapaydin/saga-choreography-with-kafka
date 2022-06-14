@@ -8,7 +8,7 @@ import lombok.Data;
  */
 @Data
 public class CreateOrderRequestDto {
-    private int customerId;
-    private int inventoryId;
-    private int count;
+        private int customerId;
+        private int inventoryId;
+        private int count;
 }

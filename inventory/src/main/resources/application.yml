@@ -19,3 +19,7 @@ spring:
       enabled: true
     console.path: /h2-console
     console.settings.trace: false
+config:
+  saga:
+    active: true
+

@@ -12,6 +12,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class RemoteCallRequest {
-    private RemoteCallPackage processRequest;
+    private RemoteRestCallPackage processRequest;
     private RemoteCallPackage compensationRequest;
 }

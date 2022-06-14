@@ -35,3 +35,6 @@ services:
   payment:
     url: http://localhost:8082
     check-budget-and-complete-payment: /v1/check/budget/complete/payment
+config:
+  saga:
+    active: true

@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
  * @author tcuapaydin
  * @created 19/04/2022 - 18:41
  */
-@Target({ElementType.METHOD,ElementType.TYPE})
+@Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Saga {
 }

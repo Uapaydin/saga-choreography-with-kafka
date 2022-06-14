@@ -8,6 +8,7 @@ import com.utku.inventory.inventory.data.repo.InventoryRepository;
 import com.utku.inventory.inventory.service.InventoryService;
 import com.utku.inventory.inventory.util.InventoryStatus;
 import com.utku.saga.exception.BaseException;
+import com.utku.saga.exception.SagaTransactionException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -43,7 +44,7 @@ public class InventoryServiceImpl implements InventoryService {
         Optional<Inventory> foundItem = inventoryRepository.findById(updateInventoryForSoldItemRequestDto.getInventoryId());
         if(foundItem.isPresent()){
             if(foundItem.get().getCount() < updateInventoryForSoldItemRequestDto.getCount()){
-                throw new BaseException(HttpStatus.INTERNAL_SERVER_ERROR);
+                throw new SagaTransactionException(HttpStatus.INTERNAL_SERVER_ERROR, "Not enough item");
             }
             foundItem.get().setStatus(InventoryStatus.INVENTORY_STATUS_AVAILABLE.getValue());
             foundItem.get().setCount(foundItem.get().getCount() - updateInventoryForSoldItemRequestDto.getCount());

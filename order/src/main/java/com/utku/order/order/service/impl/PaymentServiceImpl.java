@@ -4,9 +4,10 @@ import com.utku.order.order.data.dto.CheckBudgetAndCompletePaymentDto;
 import com.utku.order.order.properties.ServiceProperties;
 import com.utku.order.order.service.PaymentService;
 import com.utku.saga.enumaration.AuthorizationType;
-import com.utku.saga.model.RemoteCallPackage;
 import com.utku.saga.model.RemoteCallRequest;
+import com.utku.saga.model.RemoteRestCallPackage;
 import com.utku.saga.service.RemoteCall;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
@@ -15,31 +16,27 @@ import org.springframework.stereotype.Service;
  * @created 15/04/2022 - 10:52
  */
 @Service
+@RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
 
+
     private final RemoteCall remoteCall;
-
     private final ServiceProperties serviceProperties;
-
-    public PaymentServiceImpl(ServiceProperties serviceProperties, RemoteCall remoteCall) {
-        this.serviceProperties = serviceProperties;
-        this.remoteCall = remoteCall;
-    }
 
     @Override
     public boolean checkBudgetAndCompletePayment(CheckBudgetAndCompletePaymentDto checkBudgetAndCompletePaymentDto) {
         RemoteCallRequest remoteCallRequest = new RemoteCallRequest();
-        RemoteCallPackage processRequest = new RemoteCallPackage();
+        RemoteRestCallPackage processRequest = new RemoteRestCallPackage();
         processRequest.setBody(checkBudgetAndCompletePaymentDto);
         processRequest.setAuthorizationType(AuthorizationType.NONE);
         processRequest.setHttpMethod(HttpMethod.POST);
         processRequest.setUrl(serviceProperties.getPayment().getCheckBudgetAndCompletePaymentUrl());
         remoteCallRequest.setProcessRequest(processRequest);
-        RemoteCallPackage compensationRequest = new RemoteCallPackage();
+        RemoteRestCallPackage compensationRequest = new RemoteRestCallPackage();
         compensationRequest.setAuthorizationType(AuthorizationType.NONE);
         compensationRequest.setHttpMethod(HttpMethod.POST);
         compensationRequest.setUrl(serviceProperties.getPayment().getCheckBudgetAndCompletePaymentUrl());
-        remoteCallRequest.setProcessRequest(compensationRequest);
+        remoteCallRequest.setCompensationRequest(compensationRequest);
         return remoteCall.callForObject(remoteCallRequest,Boolean.class);
     }
 }

@@ -6,9 +6,10 @@ import com.utku.order.order.data.dto.response.ItemDto;
 import com.utku.order.order.properties.ServiceProperties;
 import com.utku.order.order.service.InventoryService;
 import com.utku.saga.enumaration.AuthorizationType;
-import com.utku.saga.model.RemoteCallPackage;
 import com.utku.saga.model.RemoteCallRequest;
+import com.utku.saga.model.RemoteRestCallPackage;
 import com.utku.saga.service.RemoteCall;
+import lombok.AllArgsConstructor;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
@@ -17,21 +18,17 @@ import org.springframework.stereotype.Service;
  * @created 15/04/2022 - 10:51
  */
 @Service
+@AllArgsConstructor
 public class InventoryServiceImpl implements InventoryService {
 
     private final RemoteCall remoteCall;
-
     private final ServiceProperties serviceProperties;
 
-    public InventoryServiceImpl(ServiceProperties serviceProperties, RemoteCall remoteCall) {
-        this.serviceProperties = serviceProperties;
-        this.remoteCall = remoteCall;
-    }
 
     @Override
     public ItemDto lockItemForPurchase(LockItemForPurchaseRequestDto lockItemForPurchaseRequestDto) {
         RemoteCallRequest remoteCallRequest = new RemoteCallRequest();
-        RemoteCallPackage processRequest = new RemoteCallPackage();
+        RemoteRestCallPackage processRequest = new RemoteRestCallPackage();
         processRequest.setBody(lockItemForPurchaseRequestDto);
         processRequest.setAuthorizationType(AuthorizationType.NONE);
         processRequest.setHttpMethod(HttpMethod.POST);
@@ -43,7 +40,7 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     public boolean updateInventoryForSoldItem(UpdateInventoryForSoldItemRequestDto updateInventoryForSoldItemRequestDto) {
         RemoteCallRequest remoteCallRequest = new RemoteCallRequest();
-        RemoteCallPackage processRequest = new RemoteCallPackage();
+        RemoteRestCallPackage processRequest = new RemoteRestCallPackage();
         processRequest.setBody(updateInventoryForSoldItemRequestDto);
         processRequest.setAuthorizationType(AuthorizationType.NONE);
         processRequest.setHttpMethod(HttpMethod.POST);

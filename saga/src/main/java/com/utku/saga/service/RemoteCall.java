@@ -11,21 +11,18 @@ import com.utku.saga.enumaration.LogKey;
 import com.utku.saga.enumaration.ReturnType;
 import com.utku.saga.exception.AuthorizationException;
 import com.utku.saga.exception.RemoteCallException;
+import com.utku.saga.exception.SagaTransactionException;
 import com.utku.saga.model.RemoteCallRequest;
+import com.utku.saga.model.RemoteRestCallPackage;
 import lombok.extern.slf4j.Slf4j;
 import net.logstash.logback.encoder.org.apache.commons.lang3.StringUtils;
 import org.jboss.logging.MDC;
-import org.springframework.context.annotation.Scope;
-import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.*;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.MultiValueMap;
 import org.springframework.util.StopWatch;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.context.WebApplicationContext;
 
 import java.util.Arrays;
 import java.util.List;
@@ -37,58 +34,71 @@ import java.util.Optional;
  * @created 19/04/2022 - 18:08
  */
 @Slf4j
-@Service
 @Saga
+@Service
 public class RemoteCall  {
+    private static final String REQUEST_TYPE_TRANSACTION = "TRANSACTION";
+    private static final String REQUEST_TYPE_COMPENSATION = "COMPENSATION";
+    private static final String BEARER = "Bearer ";
 
-    private final TokenService tokenService;
-    private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
+    private RestTemplate restTemplate;
+    private ObjectMapper objectMapper;
 
-    public RemoteCall() {
+    public RemoteCall (){
         restTemplate = new RestTemplate();
         objectMapper = new ObjectMapper();
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        tokenService = TokenService.get();
     }
 
-    public <T> T callForObject(RemoteCallRequest remoteCallRequest, Class<T> type) {
-        RemoteCallDTO<T> remoteCallDTO = makeCall(remoteCallRequest);
+    public <T> T callForCompensation(RemoteCallRequest remoteCallRequest, Class<T> type) {
+        RemoteCallDTO<T> remoteCallDTO = makeCall(remoteCallRequest,REQUEST_TYPE_COMPENSATION);
         return objectMapper.convertValue(remoteCallDTO.getContent(), type);
     }
-
+    public <T> T callForObject(RemoteCallRequest remoteCallRequest, Class<T> type) {
+        RemoteCallDTO<T> remoteCallDTO = makeCall(remoteCallRequest,REQUEST_TYPE_TRANSACTION);
+        return objectMapper.convertValue(remoteCallDTO.getContent(), type);
+    }
     public <T> List<T> callForList(RemoteCallRequest remoteCallRequest, Class<T> type) {
-        RemoteCallDTO<T> remoteCallDTO = makeCall(remoteCallRequest);
+        RemoteCallDTO<T> remoteCallDTO = makeCall(remoteCallRequest,REQUEST_TYPE_TRANSACTION);
         JavaType listType = objectMapper.getTypeFactory().constructCollectionType(List.class, type);
         return objectMapper.convertValue(remoteCallDTO.getContent(), listType);
     }
 
     public <K, V> Map<K, V> callForMap(RemoteCallRequest remoteCallRequest,Class<K> typeKey, Class<V> typeValue) {
-        RemoteCallDTO<Map<K, V>> remoteCallDTO = makeCall(remoteCallRequest);
+        RemoteCallDTO<Map<K, V>> remoteCallDTO = makeCall(remoteCallRequest,REQUEST_TYPE_TRANSACTION);
         JavaType mapType = objectMapper.getTypeFactory().constructMapType(Map.class, typeKey, typeValue);
 
         return objectMapper.convertValue(remoteCallDTO.getContent(), mapType);
     }
 
-    @SuppressWarnings("rawtypes")
-    private RemoteCallDTO makeCall(RemoteCallRequest remoteCallRequest) {
-        log.info("Make {} request to url: {}", remoteCallRequest.getProcessRequest().getHttpMethod().name(),
-                remoteCallRequest.getProcessRequest().getUrl());
+    private RemoteCallDTO makeCall(RemoteCallRequest remoteCallRequest, String requestType) {
+        RemoteRestCallPackage remoteRestCallPackage;
+        if(REQUEST_TYPE_COMPENSATION.equals(requestType)){
+            remoteRestCallPackage = (RemoteRestCallPackage) remoteCallRequest.getCompensationRequest();
+        }else{
+            remoteRestCallPackage = remoteCallRequest.getProcessRequest();
+        }
+
+        log.info("Make {} request to url: {}", remoteRestCallPackage.getHttpMethod().name(), remoteRestCallPackage.getUrl());
         ResponseEntity<?> responseEntity;
         RemoteCallDTO remoteCallDTO = new RemoteCallDTO();
-        HttpEntity<Object> entity = createHeader(remoteCallRequest);
+        HttpEntity<Object> entity = createHeader(remoteRestCallPackage);
 
         final StopWatch stopWatch = new StopWatch();
         stopWatch.start();
-        responseEntity = restTemplate.exchange(remoteCallRequest.getProcessRequest().getUrl(),
-                remoteCallRequest.getProcessRequest().getHttpMethod(), entity, Object.class);
+        try{
+            responseEntity = restTemplate.exchange(remoteRestCallPackage.getUrl(),
+                    remoteRestCallPackage.getHttpMethod(), entity, Object.class);
+        }catch (Exception e){
+            throw new SagaTransactionException(HttpStatus.INTERNAL_SERVER_ERROR,e.getMessage());
+        }
         stopWatch.stop();
 
         try {
             ObjectMapper mapper = new ObjectMapper();
             remoteCallDTO = Optional.ofNullable(mapper.convertValue(responseEntity.getBody(), RemoteCallDTO.class))
                     .orElseThrow(() -> new RemoteCallException("Error occurred during service call to: " +
-                            remoteCallRequest.getProcessRequest().getUrl()));
+                            remoteRestCallPackage.getUrl()));
         } catch (ClassCastException | IllegalArgumentException castException) {
             if (responseEntity.getStatusCodeValue() == HttpStatus.OK.value()) {
                 remoteCallDTO.setReturnCode(ReturnType.SUCCESS.getCode());
@@ -103,15 +113,15 @@ public class RemoteCall  {
 
         if (log.isDebugEnabled()) {
             log.debug("{} request to url: {} | Authorization type: {} | completed in {} ms | response: {}",
-                    remoteCallRequest.getProcessRequest().getHttpMethod(),
-                    remoteCallRequest.getProcessRequest().getUrl(),
-                    remoteCallRequest.getProcessRequest().getAuthorizationType(),
+                    remoteRestCallPackage.getHttpMethod(),
+                    remoteRestCallPackage.getUrl(),
+                    remoteRestCallPackage.getAuthorizationType(),
                     stopWatch.getTotalTimeMillis(), remoteCallDTO);
         } else {
             log.info("{} request to url: {} | Authorization type: {} | completed in {} ms",
-                    remoteCallRequest.getProcessRequest().getHttpMethod(),
-                    remoteCallRequest.getProcessRequest().getUrl(),
-                    remoteCallRequest.getProcessRequest().getAuthorizationType(),
+                    remoteRestCallPackage.getHttpMethod(),
+                    remoteRestCallPackage.getUrl(),
+                    remoteRestCallPackage.getAuthorizationType(),
                     stopWatch.getTotalTimeMillis());
         }
 
@@ -122,32 +132,26 @@ public class RemoteCall  {
         return remoteCallDTO;
     }
 
-    private HttpEntity<Object> createHeader(RemoteCallRequest remoteCallRequest){
+    private HttpEntity<Object> createHeader(RemoteRestCallPackage  remoteRestCallPackage){
         HttpHeaders headers = new HttpHeaders();
 
-        if (remoteCallRequest.getProcessRequest().getHeaders() != null && !CollectionUtils.isEmpty(List.of(remoteCallRequest.getProcessRequest().getHeaders()))) {
-            headers.addAll(List.of(remoteCallRequest.getProcessRequest().getHeaders()).get(0));
+        if (remoteRestCallPackage.getHeaders() != null && !CollectionUtils.isEmpty(List.of(remoteRestCallPackage.getHeaders()))) {
+            headers.addAll(List.of(remoteRestCallPackage.getHeaders()).get(0));
         }
         String requestId = MDC.get(LogKey.REQUEST_ID.getValue())!=null? MDC.get(LogKey.REQUEST_ID.getValue()).toString():null;
         headers.set(LogKey.REQUEST_ID.getValue(), requestId);
         headers.set(HttpHeaders.ACCEPT_LANGUAGE, LocaleContextHolder.getLocale().getLanguage());
-
-        if (remoteCallRequest.getProcessRequest().getAuthorizationType() == AuthorizationType.USER) {
-//            User user = UserService.getUser(true);
-//            headers.set(HttpHeaders.AUTHORIZATION, "Bearer " + user.getToken());
-        } else if (remoteCallRequest.getProcessRequest().getAuthorizationType() == AuthorizationType.SYSTEM) {
-            String serviceJwt = tokenService.getServiceJwtToken();
-            if (StringUtils.isEmpty(serviceJwt)) {
-                log.error("While using AuthorizationType.SYSTEM, you can not use empty JWT");
-                throw new AuthorizationException();
-            }
-            headers.set(HttpHeaders.AUTHORIZATION, "Bearer " + serviceJwt);
+        if(StringUtils.isNotEmpty(remoteRestCallPackage.getJwt())){
+            headers.set(HttpHeaders.AUTHORIZATION, BEARER + remoteRestCallPackage.getJwt());
+        }else if (remoteRestCallPackage.getAuthorizationType() == AuthorizationType.USER) {
+            //Passing user token should be handled here
+        } else if (remoteRestCallPackage.getAuthorizationType() == AuthorizationType.SYSTEM) {
+            //Creating and passing service token should be handled here
         } else {
-            log.info("AuthorizationType: {} | Request Header will be empty", remoteCallRequest.getProcessRequest().getAuthorizationType());
+            log.info("AuthorizationType: {} | Request Header will be empty", remoteRestCallPackage.getAuthorizationType());
         }
 
-        return new HttpEntity<>(remoteCallRequest.getProcessRequest().getBody(), headers);
+        return new HttpEntity<>(remoteRestCallPackage.getBody(), headers);
     }
-
 
 }

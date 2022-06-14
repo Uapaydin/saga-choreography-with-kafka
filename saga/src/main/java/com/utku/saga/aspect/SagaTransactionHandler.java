@@ -5,8 +5,8 @@ import lombok.Data;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.annotation.RequestScope;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 /**
  * @author tcuapaydin
@@ -18,7 +18,7 @@ import java.util.List;
 public class SagaTransactionHandler {
 
     public SagaTransactionHandler(){
-        this.transactionHistory = new ArrayList<>();
+        this.transactionHistory = new ArrayDeque<>();
     }
-    List<RemoteCallRequest> transactionHistory;
+    private Deque<RemoteCallRequest> transactionHistory;
 }
